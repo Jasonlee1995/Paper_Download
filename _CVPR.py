@@ -1,3 +1,4 @@
+import multiprocessing
 import requests
 import urllib.request
 
@@ -24,6 +25,10 @@ year2url = {
 paper_dir = './paper/'
 
 
+def download_url(info):
+    title, page_url = info
+    urllib.request.urlretrieve(page_url, title)
+
 def download(year):
     # Step 1: Get urls of the paper and save it on dictionary
     title2url = {}
@@ -41,9 +46,14 @@ def download(year):
                         title += '_'
                     else:
                         title += letter
-                title2url[title] = page_url
+                title = paper_dir + '[{}][CVPR] '.format(year) + title + '.pdf'
+                title2url[title] = baseurl + page_url
 
     # Step 2: Download paper on paper dir
-    for title in tqdm(title2url):
-        full_url = baseurl+title2url[title]
-        urllib.request.urlretrieve(full_url, paper_dir + '[{}][CVPR] '.format(year) + title + '.pdf')
+    pool = multiprocessing.Pool(processes=4)
+    total = len(title2url)
+    with tqdm(total=total) as pbar:
+        for _ in tqdm(pool.imap_unordered(download_url, list(title2url.items()))):
+            pbar.update()
+    pool.close()
+    pool.join()
